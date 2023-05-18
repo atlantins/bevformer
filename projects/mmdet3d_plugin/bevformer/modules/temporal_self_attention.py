@@ -173,7 +173,8 @@ class TemporalSelfAttention(BaseModule):
         Returns:
              Tensor: forwarded results with shape [num_query, bs, embed_dims].
         """
-        # 初始帧
+        # 初始帧   key是没有用的  value = prev_bev  query = bev_query
+        # 如果是第一帧那么就叠加
         if value is None:
             assert self.batch_first
             bs, len_bev, c = query.shape
@@ -188,9 +189,9 @@ class TemporalSelfAttention(BaseModule):
             query = query + query_pos
         if not self.batch_first:
             # change to (bs, num_query ,embed_dims)
-            query = query.permute(1, 0, 2)
-            value = value.permute(1, 0, 2)
-        bs,  num_query, embed_dims = query.shape
+            query = query.permute(1, 0, 2)  # 1,40000,256
+            value = value.permute(1, 0, 2)  # 2,40000,256
+        bs,  num_query, embed_dims = query.shape # 
         _, num_value, _ = value.shape
         assert (spatial_shapes[:, 0] * spatial_shapes[:, 1]).sum() == num_value   # h*w
         assert self.num_bev_queue == 2

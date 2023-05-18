@@ -64,7 +64,7 @@ class BEVFormerEncoder(TransformerLayerSequence):
         # reference points in 3D space, used in spatial cross-attention (SCA)
         if dim == '3d':
             zs = torch.linspace(0.5, Z - 0.5, num_points_in_pillar, dtype=dtype,
-                                device=device).view(-1, 1, 1).expand(num_points_in_pillar, H, W) / Z
+                                device=device).view(-1, 1, 1).expand(num_points_in_pillar, H, W) / Z # z轴上取4个点
             xs = torch.linspace(0.5, W - 0.5, W, dtype=dtype,
                                 device=device).view(1, 1, W).expand(num_points_in_pillar, H, W) / W
             ys = torch.linspace(0.5, H - 0.5, H, dtype=dtype,
@@ -72,7 +72,7 @@ class BEVFormerEncoder(TransformerLayerSequence):
             ref_3d = torch.stack((xs, ys, zs), -1)
             ref_3d = ref_3d.permute(0, 3, 1, 2).flatten(2).permute(0, 2, 1)
             ref_3d = ref_3d[None].repeat(bs, 1, 1, 1)
-            return ref_3d
+            return ref_3d  # 1,4,40000,3   4是z轴上3个点，200*200，3：xyz
 
         # reference points on 2D bev plane, used in temporal self-attention (TSA).
         elif dim == '2d':
@@ -197,7 +197,7 @@ class BEVFormerEncoder(TransformerLayerSequence):
         # (num_query, bs, embed_dims) -> (bs, num_query, embed_dims)
         bev_query = bev_query.permute(1, 0, 2)
         bev_pos = bev_pos.permute(1, 0, 2)
-        bs, len_bev, num_bev_level, _ = ref_2d.shape
+        bs, len_bev, num_bev_level, _ = ref_2d.shape  # 1,40000,1,2
         if prev_bev is not None:
             prev_bev = prev_bev.permute(1, 0, 2)
             prev_bev = torch.stack(
@@ -350,6 +350,7 @@ class BEVFormerLayer(MyCustomBaseTransformerLayer):
                                                      f'to the number of attention in ' \
                 f'operation_order {self.num_attn}'
 
+        # 这里完成模型的构建
         for layer in self.operation_order:
             # temporal self attention
             if layer == 'self_attn':

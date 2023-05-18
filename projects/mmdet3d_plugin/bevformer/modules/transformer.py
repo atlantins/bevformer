@@ -162,6 +162,7 @@ class PerceptionTransformer(BaseModule):
                     prev_bev[:, i] = tmp_prev_bev[:, 0]
 
         # add can bus signals
+        # can总线的信息，加到了bevqueries里面，隐式加入
         can_bus = bev_queries.new_tensor(
             [each['can_bus'] for each in kwargs['img_metas']])  # [:, :]
         can_bus = self.can_bus_mlp(can_bus)[None, :, :]
@@ -169,6 +170,7 @@ class PerceptionTransformer(BaseModule):
 
         feat_flatten = []
         spatial_shapes = []
+        # 把每个level的拉成一维
         for lvl, feat in enumerate(mlvl_feats):
             bs, num_cam, c, h, w = feat.shape
             spatial_shape = (h, w)
@@ -180,11 +182,12 @@ class PerceptionTransformer(BaseModule):
             spatial_shapes.append(spatial_shape)
             feat_flatten.append(feat)
 
+        # spatial cross attention的信息
         feat_flatten = torch.cat(feat_flatten, 2)
         spatial_shapes = torch.as_tensor(
             spatial_shapes, dtype=torch.long, device=bev_pos.device)
         level_start_index = torch.cat((spatial_shapes.new_zeros(
-            (1,)), spatial_shapes.prod(1).cumsum(0)[:-1]))
+            (1,)), spatial_shapes.prod(1).cumsum(0)[:-1])) # h*w，然后不同的维度，开始的idex
 
         feat_flatten = feat_flatten.permute(
             0, 2, 1, 3)  # (num_cam, H*W, bs, embed_dims)
