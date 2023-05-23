@@ -62,11 +62,15 @@ class BEVFormerEncoder(TransformerLayerSequence):
         """
 
         # reference points in 3D space, used in spatial cross-attention (SCA)
+        # SCA
         if dim == '3d':
+            # z轴上取4个点
             zs = torch.linspace(0.5, Z - 0.5, num_points_in_pillar, dtype=dtype,
-                                device=device).view(-1, 1, 1).expand(num_points_in_pillar, H, W) / Z # z轴上取4个点
+                                device=device).view(-1, 1, 1).expand(num_points_in_pillar, H, W) / Z 
+            # 均匀采样x的坐标
             xs = torch.linspace(0.5, W - 0.5, W, dtype=dtype,
                                 device=device).view(1, 1, W).expand(num_points_in_pillar, H, W) / W
+            # 均匀采样的y坐标
             ys = torch.linspace(0.5, H - 0.5, H, dtype=dtype,
                                 device=device).view(1, H, 1).expand(num_points_in_pillar, H, W) / H
             ref_3d = torch.stack((xs, ys, zs), -1)
@@ -75,6 +79,7 @@ class BEVFormerEncoder(TransformerLayerSequence):
             return ref_3d  # 1,4,40000,3   4是z轴上3个点，200*200，3：xyz
 
         # reference points on 2D bev plane, used in temporal self-attention (TSA).
+        # TSA
         elif dim == '2d':
             ref_y, ref_x = torch.meshgrid(
                 torch.linspace(
@@ -91,7 +96,12 @@ class BEVFormerEncoder(TransformerLayerSequence):
     # This function must use fp32!!!
     @force_fp32(apply_to=('reference_points', 'img_metas'))
     def point_sampling(self, reference_points, pc_range,  img_metas):
+        '''
+        pc_range: bev特征表征的真实的物理空间大小
+        img_metas: 数据集 list [(4*4)] * 6
+        '''
 
+         # 4×4 为 雷达坐标系转图像坐标系的齐次矩阵
         lidar2img = []
         for img_meta in img_metas:
             lidar2img.append(img_meta['lidar2img'])
@@ -123,6 +133,7 @@ class BEVFormerEncoder(TransformerLayerSequence):
                                             reference_points.to(torch.float32)).squeeze(-1)
         eps = 1e-5
 
+        # 通过阈值判断，对bev_query的每个坐标进行判断,高于阈值的为True，否则为False,用于减少计算量
         bev_mask = (reference_points_cam[..., 2:3] > eps)
         reference_points_cam = reference_points_cam[..., 0:2] / torch.maximum(
             reference_points_cam[..., 2:3], torch.ones_like(reference_points_cam[..., 2:3]) * eps)
@@ -130,6 +141,7 @@ class BEVFormerEncoder(TransformerLayerSequence):
         reference_points_cam[..., 0] /= img_metas[0]['img_shape'][0][1]
         reference_points_cam[..., 1] /= img_metas[0]['img_shape'][0][0]
 
+        # 确保所有点在正确范围内
         bev_mask = (bev_mask & (reference_points_cam[..., 1:2] > 0.0)
                     & (reference_points_cam[..., 1:2] < 1.0)
                     & (reference_points_cam[..., 0:1] < 1.0)
@@ -161,6 +173,16 @@ class BEVFormerEncoder(TransformerLayerSequence):
                 shift=0.,
                 **kwargs):
         """Forward function for `TransformerDecoder`.
+        
+        bev_query: (2500, 1, 256)
+        key: (6, 375, 1, 256) 6个相机图片的特征
+        value: 与key一致
+        bev_pos:(2500, 1, 256) 为每个bev特征点进行可学习的编码  
+        spatial_shapes: 相机特征层的尺度,tiny模型只有一个,base模型有4个
+        level_start_index: 特征尺度的索引
+        prev_bev:(2500, 1, 256) 前一时刻的bev_query
+        shift: 当前bev特征相对于上一时刻bev特征的偏移量
+
         Args:
             bev_query (Tensor): Input BEV query with shape
                 `(num_query, bs, embed_dims)`.
