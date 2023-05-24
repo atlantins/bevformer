@@ -1,0 +1,15 @@
+{
+  "config": "./projects/configs/bevformer/bevformer_tiny.py",
+  "work_dir": null,
+  "resume_from": null,
+  "no_validate": false,
+  "gpus": 1,
+  "gpu_ids": null,
+  "seed": 0,
+  "deterministic": false,
+  "options": null,
+  "cfg_options": null,
+  "launcher": "none",
+  "local_rank": 0,
+  "autoscale_lr": false
+}

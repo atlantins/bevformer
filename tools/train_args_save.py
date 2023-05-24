@@ -3,7 +3,7 @@
 # ---------------------------------------------
 #  Modified by Zhiqi Li
 # ---------------------------------------------
-
+ 
 from __future__ import division
 
 import argparse
@@ -100,7 +100,61 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
+    # 存入args，这是原始代码
+    # args = parse_args()
+
+    # 载入args
+    parser = argparse.ArgumentParser()
+    args = parser.parse_args()
+
+    import json
+
+    # 存入args
+    # with open('commandline_args.txt','w') as f:
+    #     json.dump(args.__dict__,f,indent=2)
+
+    # 载入args
+    with open('commandline_args.txt','r') as f:
+        args.__dict__ = json.load(f)
+    
+    
+
+
+    # import os
+
+    # # 获取当前脚本所在目录的父目录路径
+    # script_dir = os.path.dirname(os.path.abspath(__file__))
+    # parent_dir = os.path.dirname(script_dir)
+
+    # print(script_dir, parent_dir)
+    # # 设置PYTHONPATH
+    # os.environ['PYTHONPATH'] = parent_dir + ':' + os.environ.get('PYTHONPATH', '')
+    # print(os.environ.get('PYTHONPATH', ''))
+
+
+    # ==================================================================
+    # import os
+
+    # # 获取当前脚本所在目录的绝对路径
+    # script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # # 构建新的PYTHONPATH
+    # pythonpath = os.path.join(script_dir, "..")
+    # current_pythonpath = os.environ.get("PYTHONPATH", "")
+    # new_pythonpath = f"{pythonpath}:{current_pythonpath}"
+
+    # # 设置新的PYTHONPATH
+    # os.environ["PYTHONPATH"] = new_pythonpath
+
+    # ===================================================================
+
+    # import sys
+    # sys.path.append('/home/xhj/env/bevformer/projects')
+
+    # ===================================================================
+
+
+
     cfg = Config.fromfile(args.config)
     if args.cfg_options is not None:
         cfg.merge_from_dict(args.cfg_options)
@@ -122,7 +176,9 @@ def main():
                 for m in _module_dir[1:]:
                     _module_path = _module_path + '.' + m
                 print(_module_path)
-                print(os.environ.get('PYTHONPATH','NONE'))
+                
+                # import pdb
+                # pdb.set_trace()
                 plg_lib = importlib.import_module(_module_path)
             else:
                 # import dir is the dirpath for the config file
@@ -256,4 +312,6 @@ def main():
 
 
 if __name__ == '__main__':
+    command = 'export PYTHONPATH="$(dirname $0)/..":$PYTHONPATH'
+    os.system(command)
     main()
